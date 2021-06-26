@@ -42,5 +42,31 @@ CHIP ALU {
         ng; // 1 if (out < 0),  0 otherwise
 
     PARTS:
-   // Put you code here:
+    // Step 1: Handle zeroing inputs
+    Mux16   (a=x, b[0..15]=false, sel=zx, out=xStep1);
+    Mux16   (a=y, b[0..15]=false, sel=zy, out=yStep1);
+
+    // Step 2: Handle negating inputs
+    Not16   (in=xStep1, out=notx);
+    Not16   (in=yStep1, out=noty);
+    Mux16   (a=xStep1, b=notx, sel=nx, out=xStep2);
+    Mux16   (a=yStep1, b=noty, sel=ny, out=yStep2);
+
+    // Step 3: Handle Add or AND operation
+    And16   (a=xStep2, b=yStep2, out=andOut);
+    Add16   (a=xStep2, b=yStep2, out=addOut);
+    Mux16   (a=andOut, b=addOut, sel=f, out=outStep3);
+
+    // Step 4: Handle negating output
+    Not16   (in=outStep3, out=notOut);
+    Mux16   (a=outStep3, b=notOut, sel=no, out=out, out[0..7]=outLow, out[8..15]=outHigh, out[15]=outNeg);
+
+    // Step 5: Handle setting zero flag
+    Or8Way  (in=outLow,  out=outLowIsNotZero);
+    Or8Way  (in=outHigh, out=outHighIsNotZero);
+    Or      (a=outLowIsNotZero, b=outHighIsNotZero, out=outIsNotZero);
+    Not     (in=outIsNotZero, out=zr);
+    
+    // Step 6: Handle setting the negative flag
+    And     (a=outNeg, b=true, out=ng);
 }
